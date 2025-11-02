@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>laro ka please</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(to bottom, #70c5ce, #ffffff);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+  }
+  canvas {
+    background: linear-gradient(to bottom, #70c5ce, #fff);
+    border: 3px solid #222;
+    border-radius: 10px;
+    touch-action: none;
+  }
+  button {
+    font-family: Arial, sans-serif;
+  }
+  #startScreen, #videoContainer, #restart {
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+  }
+  #startScreen {
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.7);
+    flex-direction: column;
+    color: #fff;
+    font-size: 36px;
+    flex-wrap: wrap;
+  }
+  #startBtn, #restart {
+    font-size: 24px;
+    padding: 12px 24px;
+    background: #222;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 20px;
+  }
+  #videoContainer {
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: black;
+    display: none;
+  }
+  #gameVideo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<!-- Start Screen -->
+<div id="startScreen">
+  Flappy Bird
+  <button id="startBtn">Start Game</button>
+</div>
+
+<!-- Restart Button -->
+<button id="restart" style="display:none;">Restart</button>
+
+<!-- Video overlay -->
+<div id="videoContainer">
+  <video id="gameVideo" src="play.mp4"></video>
+</div>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const startScreen = document.getElementById("startScreen");
+const startBtn = document.getElementById("startBtn");
+const restartBtn = document.getElementById("restart");
+const videoContainer = document.getElementById("videoContainer");
+const gameVideo = document.getElementById("gameVideo");
+
+// Resize canvas
+function resizeCanvas() {
+  const size = Math.min(window.innerWidth * 0.9, window.innerHeight * 0.9);
+  canvas.width = size;
+  canvas.height = size * 1.2;
+}
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
+// Game variables
+let bird, gravity, lift, pipes, frame, score, gameOver, gameStarted;
+
+function initGame() {
+  bird = { x: 80, y: canvas.height / 2, radius: 15, velocity: 0 };
+  gravity = 0.4;
+  lift = -8;
+  pipes = [];
+  frame = 0;
+  score = 0;
+  gameOver = false;
+  gameStarted = true;
+  restartBtn.style.display = "none";
+  startScreen.style.display = "none";
+  update();
+}
+
+// Maze / Pipes / Bird functions
+function drawBird() {
+  ctx.beginPath();
+  ctx.fillStyle = "yellow";
+  ctx.arc(bird.x, bird.y, bird.radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#555";
+  ctx.stroke();
+}
+function drawPipes() {
+  ctx.fillStyle = "green";
+  pipes.forEach(p => {
+    ctx.fillRect(p.x, 0, p.width, p.top);
+    ctx.fillRect(p.x, p.bottomY, p.width, canvas.height - p.bottomY);
+  });
+}
+function drawScore() {
+  ctx.fillStyle = "#222";
+  ctx.font = "bold 24px Arial";
+  ctx.fillText("Score: " + score, 10, 30);
+}
+
+function update() {
+  if (gameOver || !gameStarted) return;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  bird.velocity += gravity;
+  bird.y += bird.velocity;
+
+  if (bird.y + bird.radius > canvas.height || bird.y - bird.radius < 0) endGame();
+
+  if (frame % 90 === 0) {
+    const gap = 130;
+    const top = Math.random() * (canvas.height / 2);
+    pipes.push({ x: canvas.width, width: 60, top: top, bottomY: top + gap, passed: false });
+  }
+
+  pipes.forEach(p => {
+    p.x -= 2;
+    if (!p.passed && bird.x > p.x + p.width) { score++; p.passed = true; }
+    if (bird.x + bird.radius > p.x && bird.x - bird.radius < p.x + p.width &&
+       (bird.y - bird.radius < p.top || bird.y + bird.radius > p.bottomY)) {
+      endGame();
+    }
+  });
+
+  pipes = pipes.filter(p => p.x + p.width > 0);
+
+  drawPipes();
+  drawBird();
+  drawScore();
+
+  frame++;
+  requestAnimationFrame(update);
+}
+
+function flap() { if (!gameOver) bird.velocity = lift; }
+
+function endGame() {
+  gameOver = true;
+  ctx.fillStyle = "rgba(0,0,0,0.5)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 36px Arial";
+  ctx.fillText("Game Over", canvas.width / 2 - 90, canvas.height / 2);
+  restartBtn.style.display = "block";
+
+  // Show video overlay
+  videoContainer.style.display = "flex";
+  gameVideo.currentTime = 0;
+  gameVideo.play();
+  gameVideo.onended = () => { videoContainer.style.display = "none"; };
+}
+
+function restart() { initGame(); }
+
+window.addEventListener("keydown", e => { if (e.code === "Space") flap(); });
+canvas.addEventListener("click", flap);
+startBtn.addEventListener("click", initGame);
+restartBtn.addEventListener("click", restart);
+
+</script>
+</body>
+</html>
